@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -Wall -Weffc++ -std=c++11 -c -Iinclude
 
-OBJS = bin/Main.o bin/Model.o bin/Server.o
+OBJS = bin/Main.o bin/Model.o bin/Server.o bin/MemoryBlock.o
 
 all: bin/server
 
