@@ -5,11 +5,15 @@
 #include <cstddef>
 #include <vector>
 
+
 struct PrefixMatch {
     std::size_t matchedTokens;
     std::vector<std::size_t> blockIds;
 };
 
+class Request;
+class GenerativeRequest;
+class EmbeddingRequest;
 class MemoryBlock;
 
 class GPU{

@@ -1,5 +1,6 @@
 #include <cstdint>
 #include "Model.h"
+#include "GPU.h"
 
 Model::Model(const std::string& id, std::size_t embeddingSize)
     : modelId(id), embeddingSize(embeddingSize) {}
