@@ -10,6 +10,14 @@ std::uint64_t Model::mixByte(std::uint64_t state, unsigned char byte) const {
     return state;
 }
 
+const std::string& Model::getId() const {
+    return modelId;
+}
+
+std::size_t Model::getEmbeddingSize() const {
+    return embeddingSize;
+}
+
 std::uint64_t Model::mixString(std::uint64_t state, const std::string& text) const {
     const std::uint64_t length = static_cast<std::uint64_t>(text.size());
     for (unsigned int shift = 0; shift < 64; shift += 8) {
@@ -72,3 +80,4 @@ std::vector<std::string> Model::tokenizer(std::string text) const {
     }
     return tokens;
 }
+
