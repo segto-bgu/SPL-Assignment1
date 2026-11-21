@@ -1,37 +1,50 @@
 #ifndef MEMORY_BLOCK_H_
 #define MEMORY_BLOCK_H_
 
+#include <cstddef>
 #include <string>
 
 enum class IdleAction { KeepCached, Destroy };
 
-class MemoryBlock{
+class MemoryBlock {
 protected:
     size_t size;
     int refCount;
     int* data;
+
 public:
     MemoryBlock(size_t size);
+    virtual ~MemoryBlock();
+
+    // Rule of 5
+    MemoryBlock(const MemoryBlock& other);
+    MemoryBlock& operator=(const MemoryBlock& other);
+    MemoryBlock(MemoryBlock&& other) noexcept;
+    MemoryBlock& operator=(MemoryBlock&& other) noexcept;
+
     virtual IdleAction onLastRelease() const = 0;
     virtual MemoryBlock* clone() const = 0;
     int readFromBlock(std::size_t offset) const;
     void writeToBlock(std::size_t offset, int value);
     void acquire();
     IdleAction release();
+
+    int getRefCount() const;
+    size_t getSize() const;
 };
 
-class KVBlock: public MemoryBlock{
+class KVBlock : public MemoryBlock {
 public:
     KVBlock(size_t size);
-    virtual IdleAction onLastRelease() const;
-    virtual MemoryBlock* clone() const;
+    virtual IdleAction onLastRelease() const override;
+    virtual MemoryBlock* clone() const override;
 };
 
-class EmbeddingWorkspace: public MemoryBlock{
+class EmbeddingWorkspace : public MemoryBlock {
 public:
     EmbeddingWorkspace(size_t size);
-    virtual IdleAction onLastRelease() const;
-    virtual MemoryBlock* clone() const;
+    virtual IdleAction onLastRelease() const override;
+    virtual MemoryBlock* clone() const override;
 };
 
 #endif

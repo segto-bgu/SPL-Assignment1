@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "GPU.h"
 
 class Request;
 class GPU;
