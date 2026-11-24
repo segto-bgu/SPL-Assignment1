@@ -1,9 +1,13 @@
 #include <fstream>
 #include <iostream>>
+#include <iostream>>
 #include <stdexcept>
 #include "json.hpp"
 
 #include "Server.h"
+#include "Model.h"
+#include "SchedulingPolicy.h"
+#include "GPU.h"
 #include "Model.h"
 #include "SchedulingPolicy.h"
 #include "GPU.h"
@@ -281,6 +285,7 @@ Server::~Server() {
 }
 
 Server::Server(const Server& other): gpus(other.gpus),
+    policy(other.policy != nullptr ? other.policy->clone() : nullptr),
       currentCycle(other.currentCycle),
       requestGPU(other.requestGPU){
         for(Model* m: other.models){
@@ -291,9 +296,9 @@ Server::Server(const Server& other): gpus(other.gpus),
         {
             for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel()->getModelId())
+                if (m->getModelId() == R->getModel().getModelId())
                 {
-                    nonSubmittedRequests.push_back(R->clone(m));
+                    nonSubmittedRequests.push_back(R->clone(*m));
                 }
                 
             }
@@ -304,9 +309,9 @@ Server::Server(const Server& other): gpus(other.gpus),
         {
              for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel()->getModelId())
+                if (m->getModelId() == R->getModel().getModelId())
                 {
-                    waitingRequests.push_back(R->clone(m));
+                    waitingRequests.push_back(R->clone(*m));
                 }
                 
             }
@@ -315,24 +320,137 @@ Server::Server(const Server& other): gpus(other.gpus),
         {
              for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel()->getModelId())
+                if (m->getModelId() == R->getModel().getModelId())
                 {
-                    activeRequests.push_back(R->clone(m));
+                    activeRequests.push_back(R->clone(*m));
                 }
                 
             }
         }
+    
+}
 
-        for (vector<int> pair: other.requestGPU)
+Server& Server::operator=(const Server& other){
+    if(this != &other){
+        gpus = other.gpus;
+        for (Model*  m: models)
         {
-            GPU g = GPU(other.gpus[pair[1]]);
-            gpus.push_back(g);
+            delete m;
+        }
+        models.clear();
+        for(Model* m: other.models){
+           models.push_back(new Model(*m));
         }
 
-        
+        for (Request* R: nonSubmittedRequests)
+        {
+            delete R; 
+        }
+        nonSubmittedRequests.clear();
+        for (Request* R: other.nonSubmittedRequests)
+        {
+            for (Model* m: models)
+            {
+                if (m->getModelId() == R->getModel().getModelId())
+                {
+                    nonSubmittedRequests.push_back(R->clone(*m));
+                }
+                
+            }
+            
+            
+        }
 
 
-        
-        
-    
+         for (Request* R: waitingRequests)
+        {
+            delete R; 
+        }
+        waitingRequests.clear();
+        for (Request* R: other.waitingRequests)
+        {
+            for (Model* m: models)
+            {
+                if (m->getModelId() == R->getModel().getModelId())
+                {
+                    waitingRequests.push_back(R->clone(*m));
+                }
+                
+            }
+            
+            
+        }
+
+         for (Request* R: activeRequests)
+        {
+            delete R; 
+        }
+        activeRequests.clear();
+        for (Request* R: other.activeRequests)
+        {
+            for (Model* m: models)
+            {
+                if (m->getModelId() == R->getModel().getModelId())
+                {
+                    activeRequests.push_back(R->clone(*m));
+                }
+                
+            }
+            
+            
+        }
+        delete policy;
+        policy = (other.policy != nullptr) ? other.policy->clone() : nullptr;
+        currentCycle = other.currentCycle; 
+        requestGPU = other.requestGPU;
+    }
+    return *this;
+
+}
+
+Server::Server(Server&& other) noexcept
+    : gpus(std::move(other.gpus)),
+      models(std::move(other.models)),
+      nonSubmittedRequests(std::move(other.nonSubmittedRequests)),
+      waitingRequests(std::move(other.waitingRequests)),
+      activeRequests(std::move(other.activeRequests)),
+      policy(other.policy),
+      currentCycle(other.currentCycle),
+      requestGPU(std::move(other.requestGPU)) {
+    other.policy = nullptr;
+    other.currentCycle = 0;
+}
+
+Server& Server::operator=(Server&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    for (Request* R : nonSubmittedRequests) {
+        delete R;
+    }
+    for (Request* R : waitingRequests) {
+        delete R;
+    }
+    for (Request* R : activeRequests) {
+        delete R;
+    }
+    for (Model* m : models) {
+        delete m;
+    }
+    delete policy;
+
+    gpus = std::move(other.gpus);
+    models = std::move(other.models);
+    nonSubmittedRequests = std::move(other.nonSubmittedRequests);
+    waitingRequests = std::move(other.waitingRequests);
+    activeRequests = std::move(other.activeRequests);
+    policy = other.policy;
+    currentCycle = other.currentCycle;
+    requestGPU = std::move(other.requestGPU);
+
+    other.policy = nullptr;
+    other.currentCycle = 0;
+
+    return *this;
 }

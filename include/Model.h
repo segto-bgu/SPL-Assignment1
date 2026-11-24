@@ -22,6 +22,10 @@ private:
 
     std::uint64_t mixByte(std::uint64_t state, unsigned char byte) const;
     std::uint64_t mixString(std::uint64_t state, const std::string& text) const;
+
+    public:
+    std::string getModelId() const;
+    std::size_t getEmbeddingSize() const;
 };
 
 
