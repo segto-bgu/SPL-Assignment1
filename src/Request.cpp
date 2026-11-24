@@ -2,6 +2,7 @@
 #include "Model.h"
 #include <vector>
 #include "GPU.h"
+#include <string>
 
 // Constructor for the Request class
 Request ::Request(int id, const Model& model, int admissionCycle, std::string prompt)
@@ -9,10 +10,10 @@ Request ::Request(int id, const Model& model, int admissionCycle, std::string pr
 
 GenerativeRequest::GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
     std::size_t maxOutputTokens)
-    : Request(id, model, admissionCycle, prompt), scriptedOutput(scriptedOutput), maxOutputTokens(maxOutputTokens), outputTokenCounter(0), scriptedTokens(model.tokenizer(scriptedOutput)),blockCounter(0){}
+    : Request(id, model, admissionCycle, prompt), scriptedOutput(scriptedOutput), maxOutputTokens(maxOutputTokens), outputTokenCounter(0), scriptedTokens(model.tokenizer(scriptedOutput)),currentTokens(),blockCounter(0){}
 
 EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt)
-    : Request(id, model, admissionCycle, prompt) {}
+    : Request(id, model, admissionCycle, prompt),outputEmbeddings() {}
 
 
 //finished() method for GenerativeRequest and EmbeddingRequest classes
@@ -39,7 +40,6 @@ void GenerativeRequest::act(GPU& gpu){
     std::size_t numSlot = (((currentTokens.size() - 1) * model.getEmbeddingSize()) - offset) / gpu.getBlockSize(); 
     if(offset == 0){
         memoryBlocks.push_back(gpu.allocateBlock(*this));
-        gpu.acquire(memoryBlocks.back());
         blockCounter++;
     }
     //finally send the token to the model
@@ -59,7 +59,6 @@ void GenerativeRequest::act(GPU& gpu){
 }
 
 void EmbeddingRequest::act(GPU& gpu){
-    currentTokens.push_back(tokens[finishedTokenCounter]);
     std::vector<std::string> temp;
     temp.push_back(tokens[finishedTokenCounter]);
     //finally send the token to the model
@@ -89,7 +88,7 @@ void EmbeddingRequest::act(GPU& gpu){
 
 //reserveMemory() method for GenerativeRequest class
 void GenerativeRequest::reserveMemory(GPU& gpu){
-    match = gpu.findLongestCachedPrefix(model.getModelId(), model.getEmbeddingSize(), tokens);
+    PrefixMatch match = gpu.findLongestCachedPrefix(model.getModelId(), model.getEmbeddingSize(), tokens);
     for(int i: match.blockIds){
         gpu.acquire(i);
         memoryBlocks.push_back(i);
@@ -115,7 +114,7 @@ void EmbeddingRequest::reserveMemory(GPU& gpu){
     }
     for(size_t i = 0; i < reservedBlocks; i++){
         memoryBlocks.push_back(gpu.allocateBlock(*this));
-        gpu.acquire(memoryBlocks.back());
+        
     }
 }
 
@@ -142,12 +141,121 @@ std::size_t EmbeddingRequest::getNeedToUnreserve() const{
     return 0;
 }
 
-
+//getNeededMemory 
 std::size_t GenerativeRequest::getNeededMemory(const GPU& gpu) const{
-    return((tokens.size() +maxOutputTokens - match.matchedTokens()) * model.getEmbeddingSize());
+    return((tokens.size() +maxOutputTokens - (gpu.findLongestCachedPrefix(model.getModelId(), model.getEmbeddingSize(),tokens)).matchedTokens) * model.getEmbeddingSize());
 };
 
 std::size_t EmbeddingRequest:: getNeededMemory(const GPU& gpu) const{
-    2*model.getEmbeddingSize();
+    return (2*model.getEmbeddingSize());
 
+}
+
+//getMaxNeededMemory
+std::size_t GenerativeRequest:: getMaxNeededMemory() const{
+    return ((tokens.size() + maxOutputTokens) * model.getEmbeddingSize());
+}
+
+std::size_t EmbeddingRequest:: getMaxNeededMemory() const{
+    return (2*model.getEmbeddingSize());
+}
+
+
+//getCachableToken
+
+std::vector<std::string> GenerativeRequest:: getCacheableTokens() const{
+    return tokens;
+}
+
+std::vector<std::string> EmbeddingRequest:: getCacheableTokens() const{
+    return;
+}
+
+
+
+//allocateOneBlock
+
+void GenerativeRequest:: allocateOneBlock(GPU& gpu, std::size_t slot) const{
+    gpu.addMemoryBlock(*this,slot);
+};
+
+void EmbeddingRequest:: allocateOneBlock(GPU& gpu, std::size_t slot) const{
+    gpu.addMemoryBlock(*this,slot);
+};
+
+//getOutPut
+std::string GenerativeRequest:: getOutput() const{
+    std:: string ret = "";
+    if (scriptedTokens.size() > 0 && maxOutputTokens > 0)
+    {
+        ret = scriptedTokens[0];
+       for (size_t i = 1; i < maxOutputTokens  && i < scriptedTokens.size(); i++)
+       {
+        ret = ret + " " + scriptedTokens[i];
+        }
+        
+    }
+    
+    
+    return ret;
+    
+}
+
+std::string EmbeddingRequest:: getOutput() const{
+    
+    std:: string ret = "";
+    if(outputEmbeddings.size() == 0){
+        return ret;
+    }
+    ret ="[" + std::to_string(outputEmbeddings[0] / static_cast<int>(tokens.size()));
+    for (size_t i = 1; i < outputEmbeddings.size(); i++)
+    {
+        ret = ret + ", " + std::to_string(outputEmbeddings[i] / static_cast<int>(tokens.size()));
+    }
+    ret = ret + "]";
+    return (ret); 
+    
+}
+// Copy-with-model constructors (matching member declaration order in Request.h)
+Request::Request(const Request& other, const Model& model)
+    : id(other.id),
+      model(model),
+      admissionCycle(other.admissionCycle),
+      tokens(other.tokens),
+      memoryBlocks(other.memoryBlocks),
+      reservedBlocks(other.reservedBlocks),
+      finishedTokenCounter(other.finishedTokenCounter) {}
+
+GenerativeRequest::GenerativeRequest(const GenerativeRequest& other, const Model& model)
+    : Request(other, model),
+      scriptedOutput(other.scriptedOutput),
+      maxOutputTokens(other.maxOutputTokens),
+      outputTokenCounter(other.outputTokenCounter),
+      scriptedTokens(other.scriptedTokens),
+      currentTokens(other.currentTokens),
+      blockCounter(other.blockCounter) {}
+
+EmbeddingRequest::EmbeddingRequest(const EmbeddingRequest& other, const Model& model)
+    : Request(other, model),
+      outputEmbeddings(other.outputEmbeddings) {}
+
+// clone() methods
+Request* GenerativeRequest::clone(const Model& model) const {
+    return new GenerativeRequest(*this, model);
+}
+
+Request* EmbeddingRequest::clone(const Model& model) const {
+    return new EmbeddingRequest(*this, model);
+}
+
+int Request::getId() const {
+    return id;
+}
+
+const Model& Request::getModel() const {
+    return model;
+}
+
+int Request::getAdmissionCycle() const {
+    return admissionCycle;
 }
