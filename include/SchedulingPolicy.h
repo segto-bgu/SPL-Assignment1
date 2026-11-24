@@ -3,6 +3,9 @@
 #include <vector>
 #include "Request.h"
 #include "GPU.h"
+#include <vector>
+#include "Request.h"
+#include "GPU.h"
 
 class SchedulingPolicy {
 public:

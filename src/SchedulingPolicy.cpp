@@ -61,3 +61,58 @@ std::vector<int> LongestPrefixPolicy::choose(const std::vector<const Request*>& 
     return order;
 }
 
+
+#include "SchedulingPolicy.h"
+#include <algorithm>
+#include "GPU.h"
+
+std::vector<int> ArrivalOrderPolicy::choose(const std::vector<const Request*>& eligible, const std::vector<GPU>& gpus) const {
+    std::vector<int> order;
+    for (size_t i = 0; i < eligible.size(); ++i) {
+    order.push_back(i); }
+    
+    std::sort(order.begin(), order.end(), [&](int a, int b) {
+        if (eligible[a]->getAdmissionCycle() == eligible[b]->getAdmissionCycle()) {
+            return eligible[a]->getId() < eligible[b]->getId();
+        }
+        return eligible[a]->getAdmissionCycle() < eligible[b]->getAdmissionCycle();
+    });
+
+    return order;
+}
+
+std::vector<int> ShortestJobPolicy::choose(const std::vector<const Request*>& eligible, const std::vector<GPU>& gpus) const {
+    std::vector<int> order;
+    for (size_t i = 0; i < eligible.size(); ++i) {
+        order.push_back(i);
+    }
+    std::sort(order.begin(), order.end(), [&](int a, int b) {
+        if (gpus[0].getBlocksForMemory(eligible[a]->getMaxNeededMemory()) == gpus[0].getBlocksForMemory(eligible[b]->getMaxNeededMemory())) {
+            return eligible[a]->getId() < eligible[b]->getId();
+        }
+        return gpus[0].getBlocksForMemory(eligible[a]->getMaxNeededMemory()) < gpus[0].getBlocksForMemory(eligible[b]->getMaxNeededMemory());
+    });
+
+    return order;
+}   
+
+std::vector<int> LongestPrefixPolicy::choose(const std::vector<const Request*>& eligible, const std::vector<GPU>& gpus) const {
+    std::vector<int> order;
+    for (size_t i = 0; i < eligible.size(); ++i) {
+        order.push_back(i);
+    }
+    
+    gpus[0].findLongestCachedPrefix(eligible[0]->getModel().getId(), eligible[0]->getModel().getEmbeddingSize(), eligible[0]->getCacheableTokens());
+    std::sort(order.begin(), order.end(), [&](int a, int b) {
+        prefixMatch matcha = gpus[0].findLongestCachedPrefix(eligible[a]->getModel().getId(), eligible[a]->getModel().getEmbeddingSize(), eligible[a]->getCacheableTokens());
+        prefixMatch matchb = gpus[0].findLongestCachedPrefix(eligible[b]->getModel().getId(), eligible[b]->getModel().getEmbeddingSize(), eligible[b]->getCacheableTokens());
+        if (matcha.matchedTokens == matchb.matchedTokens) {
+        if (eligible[a]->getMaxOutputTokens() == eligible[b]->getMaxOutputTokens()) {
+            return eligible[a]->getId() < eligible[b]->getId();
+        }
+        return eligible[a]->getMaxOutputTokens() > eligible[b]->getMaxOutputTokens();
+    });
+
+    return order;
+}
+

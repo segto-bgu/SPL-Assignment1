@@ -45,6 +45,10 @@ private:
     std::vector<std::string> scriptedTokens;
     std:: vector<std::string> currentTokens; // This vector will hold the tokens that have been processed so far, including both prompt and generated tokens.
     size_t blockCounter;
+    std::size_t outputTokenCounter;
+    std::vector<std::string> scriptedTokens;
+    std:: vector<std::string> currentTokens; // This vector will hold the tokens that have been processed so far, including both prompt and generated tokens.
+    size_t blockCounter;
 public:
     GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
     std::size_t maxOutputTokens);
