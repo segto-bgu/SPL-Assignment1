@@ -271,8 +271,9 @@ bool GPU::hasPrefixKey(const std::string& modelId, const std::vector<std::string
 }
 
 void GPU::copyMemoryFromOtherGPU(const GPU& other, const std::vector<std::size_t>& blocks) {
+    if (this == &other) { return; }
     std::vector<bool> protectedSlot(blocksNum, false);
-
+    
     // Protect any blocks already on this GPU that match the chain being copied
     for (std::size_t srcSlot : blocks) {
         if (srcSlot >= other.blocksNum || other.memory[srcSlot] == nullptr || !other.slotInfo[srcSlot].hasPrefix) {
@@ -396,6 +397,16 @@ PrefixMatch GPU::findLongestCachedPrefix(const std::string& modelId, std::size_t
     }
 
     return result;
+}
+
+std::size_t GPU::countIdleBlocks(const std::vector<std::size_t>& slots) const {
+    std::size_t idleCount = 0;
+    for (std::size_t slot : slots) {
+        if (slot < blocksNum && memory[slot] != nullptr && memory[slot]->getRefCount() == 0) {
+            ++idleCount;
+        }
+    }
+    return idleCount;
 }
 
 std::size_t GPU::getCacheHits() const {
