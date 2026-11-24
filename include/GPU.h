@@ -34,6 +34,10 @@ private:
     std::size_t blocksNum;
     std::size_t blockSize;
     std::vector<MemoryBlock*> memory;
+public: 
+    std::size_t getBlockSize() const;
+    std::size_t getBlocksNum() const;
+    int isBlockCached(std::vector<std::size_t> blockId) const;
 };
 
 #endif
