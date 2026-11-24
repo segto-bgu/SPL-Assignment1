@@ -15,6 +15,7 @@ protected:
     std::vector<std::string> tokens;
     std::vector<std::size_t> memoryBlocks;
     std::size_t reservedBlocks;
+    std::size_t finishedTokenCounter;
 public:
     Request(int id, const Model& model, int admissionCycle, std::string prompt);
     virtual std::size_t getNeededMemory(const GPU& gpu) const=0;
@@ -37,14 +38,32 @@ class GenerativeRequest: public Request{
 private:
     std::string scriptedOutput;
     std::size_t maxOutputTokens;
+    std::size_t outputTokenCounter;
+    std::vector<std::string> scriptedTokens;
+    std:: vector<std::string> currentTokens; // This vector will hold the tokens that have been processed so far, including both prompt and generated tokens.
+    size_t blockCounter;
 public:
     GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
     std::size_t maxOutputTokens);
+    bool finished() const override;
+    void act(GPU& gpu) override;
+    void reserveMemory(GPU& gpu) override;
+    std::size_t getNeedToUnreserve() const override;
 };
 
 class EmbeddingRequest: public Request{
+private:
+    std:: vector<std::string> currentTokens; // This vector will hold the tokens that have been processed so far, including both prompt and generated tokens.
+    std::vector<int> outputEmbeddings; // This vector will hold the output.
+
 public:
     EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt);
+    bool finished() const override;
+    void act(GPU& gpu) override;
+    void reserveMemory(GPU& gpu) override;
+    
 };
+
+
 
 #endif
