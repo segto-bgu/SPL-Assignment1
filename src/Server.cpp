@@ -86,7 +86,7 @@ Server::Server(string configPath): gpus(),
     for(RequestConfig requestConfig: config.requests){
         Model* model = nullptr;
         for(Model* m: models){
-            if(m->getModelId() == requestConfig.modelId){
+            if(m->getId() == requestConfig.modelId){
                 model = m;
                 break;
             }
@@ -168,8 +168,8 @@ bool Server::step(){
 
         //search for the first GPU thats fits
         for(size_t j = 0; j < gpus.size() && selectedGPUIndex == -1; j++){
-            PrefixMatch matchTemp = gpus[j].findLongestCachedPrefix(request->getModel().getModelId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
-            if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(neededMemory) - gpus[j].isBlockCached(matchTemp.blockIds)){
+            PrefixMatch matchTemp = gpus[j].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+            if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(neededMemory) - gpus[j].countIdleBlocks(matchTemp.blockIds)){
                 selectedGPUIndex = j;
             }
         }
@@ -177,16 +177,16 @@ bool Server::step(){
         
         if(selectedGPUIndex != -1){
             //scanning the rest GPU and choose according to the assigment
-            PrefixMatch matchSelected = gpus[selectedGPUIndex].findLongestCachedPrefix(request->getModel().getModelId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+            PrefixMatch matchSelected = gpus[selectedGPUIndex].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
             for(size_t j = selectedGPUIndex + 1; j < gpus.size(); j++){
-                PrefixMatch matchTemp = gpus[j].findLongestCachedPrefix(request->getModel().getModelId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
-                if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(neededMemory) - gpus[j].isBlockCached(matchTemp.blockIds)){
+                PrefixMatch matchTemp = gpus[j].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+                if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(neededMemory) - gpus[j].countIdleBlocks(matchTemp.blockIds)){
                     if(matchTemp.matchedTokens > matchSelected.matchedTokens){
                         selectedGPUIndex = j;
                         matchSelected = matchTemp;
                     }
                     else if(matchTemp.matchedTokens == matchSelected.matchedTokens){
-                        if(gpus[j].getBlocksForMemory(neededMemory) - gpus[j].isBlockCached(matchTemp.blockIds) < gpus[selectedGPUIndex].getBlocksForMemory(neededMemory) -gpus[selectedGPUIndex].isBlockCached(matchSelected.blockIds)){
+                        if(gpus[j].getBlocksForMemory(neededMemory) - gpus[j].countIdleBlocks(matchTemp.blockIds) < gpus[selectedGPUIndex].getBlocksForMemory(neededMemory) -gpus[selectedGPUIndex].countIdleBlocks(matchSelected.blockIds)){
                             selectedGPUIndex = j;
                             matchSelected = matchTemp;
                         }
@@ -200,11 +200,11 @@ bool Server::step(){
 
             //finding gpu with longest prefix
             
-            PrefixMatch longest = gpus[0].findLongestCachedPrefix(request->getModel().getModelId(), request->getModel().getEmbeddingSize(),request->getCacheableTokens());
+            PrefixMatch longest = gpus[0].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(),request->getCacheableTokens());
             size_t longestPrefix = 0;
             for (size_t j = 0; j < gpus.size(); j++)
             {
-                PrefixMatch temp = gpus[j].findLongestCachedPrefix(request->getModel().getModelId(), request->getModel().getEmbeddingSize(),request->getCacheableTokens());
+                PrefixMatch temp = gpus[j].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(),request->getCacheableTokens());
                 if (temp.matchedTokens > longest.matchedTokens) {
                     longest = temp;   
                     longestPrefix = j;
@@ -296,7 +296,7 @@ Server::Server(const Server& other): gpus(other.gpus),
         {
             for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel().getModelId())
+                if (m->getId() == R->getModel().getId())
                 {
                     nonSubmittedRequests.push_back(R->clone(*m));
                 }
@@ -309,7 +309,7 @@ Server::Server(const Server& other): gpus(other.gpus),
         {
              for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel().getModelId())
+                if (m->getId() == R->getModel().getId())
                 {
                     waitingRequests.push_back(R->clone(*m));
                 }
@@ -320,7 +320,7 @@ Server::Server(const Server& other): gpus(other.gpus),
         {
              for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel().getModelId())
+                if (m->getId() == R->getModel().getId())
                 {
                     activeRequests.push_back(R->clone(*m));
                 }
@@ -351,7 +351,7 @@ Server& Server::operator=(const Server& other){
         {
             for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel().getModelId())
+                if (m->getId() == R->getModel().getId())
                 {
                     nonSubmittedRequests.push_back(R->clone(*m));
                 }
@@ -371,7 +371,7 @@ Server& Server::operator=(const Server& other){
         {
             for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel().getModelId())
+                if (m->getId() == R->getModel().getId())
                 {
                     waitingRequests.push_back(R->clone(*m));
                 }
@@ -390,7 +390,7 @@ Server& Server::operator=(const Server& other){
         {
             for (Model* m: models)
             {
-                if (m->getModelId() == R->getModel().getModelId())
+                if (m->getId() == R->getModel().getId())
                 {
                     activeRequests.push_back(R->clone(*m));
                 }

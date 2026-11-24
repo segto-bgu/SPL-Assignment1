@@ -168,7 +168,7 @@ std::vector<std::string> GenerativeRequest:: getCacheableTokens() const{
 }
 
 std::vector<std::string> EmbeddingRequest:: getCacheableTokens() const{
-    return;
+    return std::vector<std::string>();
 }
 
 
