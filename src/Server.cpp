@@ -1,6 +1,5 @@
 #include <fstream>
 #include <iostream>>
-#include <iostream>>
 #include <stdexcept>
 #include "json.hpp"
 
@@ -8,9 +7,7 @@
 #include "Model.h"
 #include "SchedulingPolicy.h"
 #include "GPU.h"
-#include "Model.h"
-#include "SchedulingPolicy.h"
-#include "GPU.h"
+
 
 using namespace std;
 using json = nlohmann::json;
@@ -169,7 +166,7 @@ bool Server::step(){
         //search for the first GPU thats fits
         for(size_t j = 0; j < gpus.size() && selectedGPUIndex == -1; j++){
             PrefixMatch matchTemp = gpus[j].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
-            if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(neededMemory) - gpus[j].countIdleBlocks(matchTemp.blockIds)){
+            if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(request->getNeededMemory(gpus[j])) + gpus[j].countIdleBlocks(matchTemp.blockIds)){
                 selectedGPUIndex = j;
             }
         }
@@ -180,13 +177,13 @@ bool Server::step(){
             PrefixMatch matchSelected = gpus[selectedGPUIndex].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
             for(size_t j = selectedGPUIndex + 1; j < gpus.size(); j++){
                 PrefixMatch matchTemp = gpus[j].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
-                if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(neededMemory) - gpus[j].countIdleBlocks(matchTemp.blockIds)){
+                if(gpus[j].availableSlots() >= gpus[j].getBlocksForMemory(request->getNeededMemory(gpus[j])) + gpus[j].countIdleBlocks(matchTemp.blockIds)){
                     if(matchTemp.matchedTokens > matchSelected.matchedTokens){
                         selectedGPUIndex = j;
                         matchSelected = matchTemp;
                     }
                     else if(matchTemp.matchedTokens == matchSelected.matchedTokens){
-                        if(gpus[j].getBlocksForMemory(neededMemory) - gpus[j].countIdleBlocks(matchTemp.blockIds) < gpus[selectedGPUIndex].getBlocksForMemory(neededMemory) -gpus[selectedGPUIndex].countIdleBlocks(matchSelected.blockIds)){
+                        if(gpus[j].getBlocksForMemory(request->getNeededMemory(gpus[j])) + gpus[j].countIdleBlocks(matchTemp.blockIds) < gpus[selectedGPUIndex].getBlocksForMemory(neededMemory) -gpus[selectedGPUIndex].countIdleBlocks(matchSelected.blockIds)){
                             selectedGPUIndex = j;
                             matchSelected = matchTemp;
                         }
@@ -262,9 +259,18 @@ bool Server::step(){
 
 }
 
-void Server::serve(){
+void Server::serve() {
     while (step()) {
     }
+    std::size_t totalHits = 0;
+    std::size_t totalEvictions = 0;
+    for (std::size_t i = 0; i < gpus.size(); ++i) {
+        totalHits += gpus[i].getCacheHits();
+        totalEvictions += gpus[i].getEvictions();
+    }
+    std::cout << "summary: cycles=" << currentCycle
+              << " cache_hits=" << totalHits
+              << " evictions=" << totalEvictions << "\n";
 }
 
 

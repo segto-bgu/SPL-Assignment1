@@ -37,10 +37,10 @@ std::vector<int> LongestPrefixPolicy::choose(const std::vector<const Request*>& 
     std::vector<PrefixMatch> matches(eligible.size());
     for (size_t i = 0; i < eligible.size(); ++i) {
         order.push_back(i);
-        PrefixMatch match = gpus[0].findLongestCachedPrefix(eligible[i]->getModel().getModelId(), eligible[i]->getModel().getEmbeddingSize(), eligible[i]->getCacheableTokens());
+        PrefixMatch match = gpus[0].findLongestCachedPrefix(eligible[i]->getModel().getId(), eligible[i]->getModel().getEmbeddingSize(), eligible[i]->getCacheableTokens());
         for (size_t j = 0; j < gpus.size(); j++)
         {
-            PrefixMatch temp = gpus[j].findLongestCachedPrefix(eligible[i]->getModel().getModelId(), eligible[i]->getModel().getEmbeddingSize(), eligible[i]->getCacheableTokens());
+            PrefixMatch temp = gpus[j].findLongestCachedPrefix(eligible[i]->getModel().getId(), eligible[i]->getModel().getEmbeddingSize(), eligible[i]->getCacheableTokens());
             if (temp.matchedTokens > match.matchedTokens) {
                 match = temp;   
             }  

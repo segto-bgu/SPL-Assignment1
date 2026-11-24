@@ -28,6 +28,9 @@ bool EmbeddingRequest::finished() const {
 
 //act() method for GenerativeRequest and EmbeddingRequest classes
 void GenerativeRequest::act(GPU& gpu){
+    if (finished()) {
+        return;
+    }
     //building the currentTokens vector with the tokens that have been processed so far, including both prompt and generated tokens.
     if(currentTokens.size() < tokens.size()){
         currentTokens.push_back(tokens[currentTokens.size()]);
@@ -46,7 +49,7 @@ void GenerativeRequest::act(GPU& gpu){
     model.generateTokenEmbedding(currentTokens, gpu, memoryBlocks[numSlot], offset);
     //check if we need to assign the prefix to the block
     if(offset + model.getEmbeddingSize() == gpu.getBlockSize()){
-        gpu.assignPrefixToBlock(memoryBlocks.back(), currentTokens, model.getModelId());
+        gpu.assignPrefixToBlock(memoryBlocks.back(), currentTokens, model.getId());
     }
     //increment the finishedTokenCounter or the outputTokenCounter depending on the state of the request
     if(finishedTokenCounter < tokens.size()){
@@ -88,7 +91,7 @@ void EmbeddingRequest::act(GPU& gpu){
 
 //reserveMemory() method for GenerativeRequest class
 void GenerativeRequest::reserveMemory(GPU& gpu){
-    PrefixMatch match = gpu.findLongestCachedPrefix(model.getModelId(), model.getEmbeddingSize(), tokens);
+    PrefixMatch match = gpu.findLongestCachedPrefix(model.getId(), model.getEmbeddingSize(), tokens);
     for(int i: match.blockIds){
         gpu.acquire(i);
         memoryBlocks.push_back(i);
@@ -143,7 +146,7 @@ std::size_t EmbeddingRequest::getNeedToUnreserve() const{
 
 //getNeededMemory 
 std::size_t GenerativeRequest::getNeededMemory(const GPU& gpu) const{
-    return((tokens.size() +maxOutputTokens - (gpu.findLongestCachedPrefix(model.getModelId(), model.getEmbeddingSize(),tokens)).matchedTokens) * model.getEmbeddingSize());
+    return((tokens.size() +maxOutputTokens - (gpu.findLongestCachedPrefix(model.getId(), model.getEmbeddingSize(),tokens)).matchedTokens) * model.getEmbeddingSize());
 };
 
 std::size_t EmbeddingRequest:: getNeededMemory(const GPU& gpu) const{
