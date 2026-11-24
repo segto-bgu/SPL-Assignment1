@@ -1,5 +1,5 @@
 #include <fstream>
-#include <iostream>>
+#include <iostream>
 #include <stdexcept>
 #include "json.hpp"
 
@@ -160,7 +160,6 @@ bool Server::step(){
     //start going by order
     for(int i: order){
         Request* request = waitingRequests[i];
-        std::size_t neededMemory = request->getMaxNeededMemory();
         int selectedGPUIndex = -1;
 
         //search for the first GPU thats fits
@@ -182,8 +181,10 @@ bool Server::step(){
                         selectedGPUIndex = j;
                         matchSelected = matchTemp;
                     }
-                    else if(matchTemp.matchedTokens == matchSelected.matchedTokens){
-                        if(gpus[j].getBlocksForMemory(request->getNeededMemory(gpus[j])) + gpus[j].countIdleBlocks(matchTemp.blockIds) < gpus[selectedGPUIndex].getBlocksForMemory(neededMemory) -gpus[selectedGPUIndex].countIdleBlocks(matchSelected.blockIds)){
+                    else if (matchTemp.matchedTokens == matchSelected.matchedTokens) {
+                        std::size_t newSlotsNeeded = gpus[j].getBlocksForMemory(request->getNeededMemory(gpus[j])) + gpus[j].countIdleBlocks(matchTemp.blockIds);
+                        std::size_t curSlotsNeeded = gpus[selectedGPUIndex].getBlocksForMemory(request->getNeededMemory(gpus[selectedGPUIndex])) + gpus[selectedGPUIndex].countIdleBlocks(matchSelected.blockIds);
+                        if (newSlotsNeeded < curSlotsNeeded) {
                             selectedGPUIndex = j;
                             matchSelected = matchTemp;
                         }
@@ -202,10 +203,9 @@ bool Server::step(){
             for (size_t j = 0; j < gpus.size(); j++)
             {
                 PrefixMatch temp = gpus[j].findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(),request->getCacheableTokens());
-                if (temp.matchedTokens > longest.matchedTokens) {
-                    longest = temp;   
-                    longestPrefix = j;
-                }  
+                if (longest.matchedTokens > matchSelected.matchedTokens) {
+                    gpus[selectedGPUIndex].copyMemoryFromOtherGPU(gpus[longestPrefix], longest.blockIds);
+                }
             }    
             
             if(longestPrefix != static_cast<size_t>(selectedGPUIndex)){
@@ -290,10 +290,15 @@ Server::~Server() {
     delete policy;
 }
 
-Server::Server(const Server& other): gpus(other.gpus),
-    policy(other.policy != nullptr ? other.policy->clone() : nullptr),
+Server::Server(const Server& other)
+    : gpus(other.gpus),
+      models(),
+      nonSubmittedRequests(),
+      waitingRequests(),
+      activeRequests(),
+      policy(other.policy ? other.policy->clone() : nullptr),
       currentCycle(other.currentCycle),
-      requestGPU(other.requestGPU){
+      requestGPU(other.requestGPU) {
         for(Model* m: other.models){
            models.push_back(new Model(*m));
         }

@@ -10,6 +10,10 @@
 struct PrefixMatch {
     std::size_t matchedTokens;
     std::vector<std::size_t> blockIds;
+
+    PrefixMatch() : matchedTokens(0), blockIds() {}
+    PrefixMatch(std::size_t matchedTokens, const std::vector<std::size_t>& blockIds)
+        : matchedTokens(matchedTokens), blockIds(blockIds) {}
 };
 
 class Request;
@@ -26,6 +30,7 @@ public:
     GPU(GPU&& other) noexcept;
     GPU& operator=(GPU&& other) noexcept;
 
+    std::size_t countIdleBlocks(std::vector<std::size_t> slots) const;
     std::size_t availableSlots() const;
     std::size_t getBlocksForMemory(std::size_t memory) const;
     void reserve(std::size_t n, const Request& request);

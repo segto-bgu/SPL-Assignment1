@@ -399,7 +399,7 @@ PrefixMatch GPU::findLongestCachedPrefix(const std::string& modelId, std::size_t
     return result;
 }
 
-std::size_t GPU::countIdleBlocks(const std::vector<std::size_t>& slots) const {
+std::size_t GPU::countIdleBlocks(std::vector<std::size_t> slots) const {
     std::size_t idleCount = 0;
     for (std::size_t slot : slots) {
         if (slot < blocksNum && memory[slot] != nullptr && memory[slot]->getRefCount() == 0) {

@@ -1,33 +1,34 @@
 #ifndef SERVER_H_
 #define SERVER_H_
 
-#include <vector>
+#include <cstddef>
 #include <string>
+#include <vector>
 #include "Request.h"
 #include "GPU.h"
 
-struct GPUConfig{
+struct GPUConfig {
     std::size_t memoryBytes;
 };
 
-struct ModelConfig{
+struct ModelConfig {
     std::string id;
     std::size_t embeddingSize;
 };
 
 enum class RequestType { Generative, TextEmbedder };
 
-struct RequestConfig{
+struct RequestConfig {
     std::size_t id;
     RequestType type;
     std::string modelId;
     int admissionCycle;
     std::string prompt;
     std::string scriptedOutput;
-    size_t maxOutputTokens;
+    std::size_t maxOutputTokens;
 };
 
-struct Config{
+struct Config {
     std::size_t blockSize;
     std::vector<GPUConfig> gpus;
     std::vector<ModelConfig> models;
@@ -38,7 +39,7 @@ struct Config{
 class Model;
 class SchedulingPolicy;
 
-class Server{
+class Server {
 private:
     Config readConfig(std::string configPath) const;
 
@@ -48,8 +49,8 @@ private:
     std::vector<Request*> waitingRequests;
     std::vector<Request*> activeRequests;
     SchedulingPolicy* policy;
-    int currentCycle; 
-    std::vector<std::vector<int>> requestGPU; 
+    int currentCycle;
+    std::vector<std::vector<int>> requestGPU;
 
 public:
     Server(std::string configPath);
